@@ -237,3 +237,120 @@ fetchData(3, 1000);
     }
     fetchDataWithExpiry("https://jsonplaceholder.typicode.com/users", 5000);
 })();
+
+(() => { // This operation implements a more complex operation compared to what I have been doing before.
+    // Here, we are implementing an expiry date and attaching that expiry date to a value.
+    // The operation is a time based operation. 
+    //If the current time is greater than the value's expiry date/time, we fetch new data and before we can save that data in either localStorage() or sessionStorage(), we remove the old data by removing the key, then we save the new data.
+    async function fetchDataWithExpiry(url, ttl, retries, delay,storageType) {
+        const storage = storageType === "local" ? localStorage : sessionStorage;
+        const key = `fetchedData`;
+
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const storedData = storage.getItem(key); // Notice that the operation begins by getting the stored data from the storage medium.
+
+                if (storedData) { // The reason we begin by checking whether the storage medium has any data is because of how the logic works.
+                    const displayData = JSON.parse(storedData);
+
+                    if (Date.now() >= displayData.expiryDate) {
+                        console.log(`Attempting clear and refetch`);
+
+                        const storageTime = Date.now();
+                        const expiryDate = storageTime + ttl;
+    
+                        const newResponse = await fetch(url);
+                        const newObjectData = await newResponse.json();
+                        const newUsers = {value: newObjectData, expiry: expiryDate};
+                        const newStringData = JSON.stringify(newUsers);
+                        
+                        storage.removeItem(key); // Notice how the key is removed.
+
+                        storage.setItem(key, newStringData);
+    
+                        return console.log(newUsers);
+                    } else {
+                        console.log(`Fetching stored data`);
+                        return console.log(displayData);
+                    }
+                } else {
+                    console.log(`Fetching new data`);
+                    const response = await fetch(url);
+                    const objectData = await response.json();
+                    const storageTime = Date.now();
+                    const expiryDate = storageTime + ttl;
+                    const newUsers = { value: objectData, expiryDate };
+
+                    storage.setItem(key, JSON.stringify(newUsers));  // Store new data
+
+                    return console.log(newUsers);  // Display new data
+                }
+            } catch (error) {
+                console.error(`An error occurred.`, error);
+
+                if (attempt < retries) {
+                    console.log(`Retrying in ${delay / 1000} seconds...`);
+                    await new Promise((resolve) => setTimeout((resolve), delay));
+                } else {
+                    console.error(`All attempts failed`);
+                }
+            }
+        }
+    }
+    fetchDataWithExpiry("https://jsonplaceholder.typicode.com/users", 5000, 3, 1000, "local");
+})();
+
+(() => {
+    async function fetchUserSettingsWithExpiry(url, ttl, retries, delay, storageType) {
+        const storage = storageType === "local" ? localStorage: sessionStorage;
+        const key = "fetchedData";
+
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                const retrievedData = storage.getItem(key); // Notice that you need to first get the data without even parsing this data.
+
+                if (retrievedData) {
+                    const parsedData = JSON.parse(retrievedData);
+
+                    if (Date.now() >= parsedData.expiryDate) {
+                        const newResponse = await fetch(url); // If you refetch, I think it is best to define your variables as new, because you are conducting a refetch
+                        const newObjectData = await newResponse.json();
+
+                        const newStorageTime = Date.now();
+                        const expiryDate = newStorageTime + ttl;
+                        const newUsers = {users: newObjectData, expiryDate};
+
+                        storage.removeItem(key);
+
+                        storage.setItem(key, JSON.stringify(newUsers)); // localStorage() and sessionStorage() does not return anything
+                        console.log(newUsers);
+                        return newUsers;
+                    } else {
+                        console.log("Displaying stored data", parsedData);
+                    }
+                } else {
+                    const response = await fetch(url);
+                    const objectData = await response.json();
+                    
+                    const storageTime = Date.now();
+                    const expiryDate = storageTime + ttl;
+                    const users = {value: objectData, expiryDate};
+
+                    storage.setItem(key, JSON.stringify(users));
+                    console.log(users);
+                    return users;
+                }
+            } catch (error) {
+                console.error("An error occured", error);
+
+                if (attempt < retries) {
+                    console.log(`Attempting again in ${delay / 1000} seconds...`);
+                    await new Promise((resolve) => setTimeout((resolve), delay)); 
+                } else {
+                    console.log("All attempts failed");
+                }
+            }
+        }
+    }
+    fetchUserSettingsWithExpiry("https://jsonplaceholder.typicode.com/users", 600000, 3, 2000, "local");
+})();
