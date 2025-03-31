@@ -326,7 +326,9 @@ fetchData(3, 1000);
                         console.log(newUsers);
                         return newUsers;
                     } else {
-                        console.log("Displaying stored data", parsedData);
+                        console.log("Displaying stored data");
+                        setTimeout(() => console.log(parsedData), 1000);
+                        return parsedData;
                     }
                 } else {
                     const response = await fetch(url);
@@ -348,9 +350,87 @@ fetchData(3, 1000);
                     await new Promise((resolve) => setTimeout((resolve), delay)); 
                 } else {
                     console.log("All attempts failed");
+                    return null; // Ensure function always returns something
                 }
             }
         }
     }
     fetchUserSettingsWithExpiry("https://jsonplaceholder.typicode.com/users", 600000, 3, 2000, "local");
+})();
+
+(() => { // Here we are adding a small operation that actually uses the data that is returned to the calling function.
+    // This part mostly focuses on return as a statement and it clearly shows why return is important where functions are concerned because, 
+    // whatever is stored in the calling function can be used elsewhere, in this case when intending to create theme settings or language settings.
+    async function fetchUserSettingsWithExpiry(url, ttl, retries, delay, storageType) {
+        const storage = storageType === "local" ? localStorage: sessionStorage;
+        const key = "fetchedData";
+        
+        for (let attempts = 1; attempts <= retries; attempts++) {
+            try {
+                const storedData = storage.getItem(key);
+
+                if (storedData) {
+                    const parsedData = JSON.parse(storedData);
+
+                    if (Date.now() >= parsedData.expiryDate) {
+                        const newResponse = await fetch(url);
+                        const newObjectData = await newResponse.json();
+
+                        const newStorageTime = Date.now();
+                        const expiryDate = newStorageTime + ttl;
+                        const newSettings = {value: newObjectData, expiryDate};
+                        newSettings.theme = "dark";
+                        newSettings.language = "en";
+
+                        storage.removeItem(key);
+
+                        storage.setItem(key, JSON.stringify(newSettings));
+                        return newSettings; // Return!!
+                    } else {
+                        console.log("Retrieving stored data...",);
+                        setTimeout(() => console.log(parsedData), 1000);
+                        return parsedData; // Returning the data to the calling function is very important becaue this allows that data to be used in various ways. 
+                        // In this case, the data is used to apply settings such as theme and language to a page.
+                    }
+                } else {
+                    const response = await fetch(url);
+                    const objectData = await response.json();
+
+                    const storageTime = Date.now();
+                    const expiryDate = storageTime + ttl;
+                    const settings = {value: objectData, expiryDate};
+                    settings.theme = "dark";
+                    settings.language = "en";
+
+                    storage.setItem(key, JSON.stringify(settings));
+                    return settings; // Return!!
+                }
+            } catch (error) {
+                console.error("An error ocurred", error);
+
+                if (attempts < retries) {
+                    console.log(`Attempting fetch in ${delay / 1000} seconds...`);
+                    await new Promise((resolve) => setTimeout((resolve), delay));
+                } else {
+                    console.log("All attempts failed");
+                    return null; // Ensure function always returns something
+                }
+            }
+        }
+    }
+
+    async function applySettings() {
+        const settings = await fetchUserSettingsWithExpiry("https://jsonplaceholder.typicode.com/users", 600000, 3, 2000, "local");
+        
+        if (settings) {
+            if (settings.theme === "dark") {
+                document.body.classList.add("dark-theme");
+            } else {
+                document.body.classList.remove("dark-theme");
+            }
+
+            if (settings.language === "en") console.log("Users preferred language is English");
+        }
+    }
+    applySettings();
 })();
