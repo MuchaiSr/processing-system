@@ -434,3 +434,41 @@ fetchData(3, 1000);
     }
     applySettings();
 })();
+
+(() => { // Instead of using if...statements, you can use switch case.
+    // It works very closely to how if statements work except that there are comparisons made.
+    // switch() can take a parameter, and this parameter is compared to other "variables".
+    // If they match, the operation implemented within the block will run.
+    async function applySettings() {
+        const settings = await fetchUserSettingsWithExpiry("https://jsonplaceholder.typicode.com/users", 600000, 3, 2000, "local");
+
+        if (settings) {
+            switch(settings.theme) { // Switch case is much more flexible than if...statements.
+                //Notice how you can implement various situations and the operation will simply pick that which is true.
+                case "dark": // Notice that it uses a full colon.
+                    document.body.classList.add("dark-theme");
+                    break; // Break almost works like return in that both will usually stop the execution of the function operation from proceeding.
+                    // The difference between the two is that break does NOT exit the function while return exits completely. 
+                    // It disregards any operations that come after it.
+                case "light":
+                    document.body.classList.add("light-theme");
+                    break;
+                default:
+                    console.log("Default settings will be applied");
+            }
+    
+            switch(settings.language) {
+                case "en":
+                    console.log("Language set to English.");
+                    break;
+                case "fr":
+                    console.log("Langue définie sur le français.");
+                    break;
+                default:
+                    console.log("Default language applied.");
+                    break;
+            }
+        }
+    }
+    applySettings();
+})();
